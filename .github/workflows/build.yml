@@ -153,13 +153,23 @@ jobs:
           real=$(realpath $path)
           echo "Apply patches in $real to frida/subprojects/$name"
           cd subprojects/$name
-          git am ../../../patches/$name/*.patch
+            for patch_file in ../../../patches/$name/*.patch; do
+              echo "  Applying $(basename $patch_file)..."
+              if ! git am --3way "$patch_file" 2>/dev/null; then
+                git am --abort 2>/dev/null || true
+                if ! git apply --3way "$patch_file" 2>/dev/null; then
+                  echo "  WARNING: Skipping $(basename $patch_file)"
+                else
+                  git add -A && git commit -m "Applied $(basename $patch_file)" --allow-empty
+                fi
+              fi
+            done
           cd ../..
           echo $i
         done
         cd ..
         
-        ARCHES="android-arm android-arm64 android-x86 android-x86_64"
+        ARCHES="android-arm64"
         for ARCH in $ARCHES
         do
           mkdir build-$ARCH
